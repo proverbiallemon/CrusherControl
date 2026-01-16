@@ -10,17 +10,22 @@ class PopoverViewController: NSViewController, CrusherConnectionDelegate {
     private var connectionStatusView: NSView!
     private var connectionStatusDot: NSView!
     private var connectionStatusLabel: NSTextField!
-    private var ancButton: NSButton!
-    private var transparencyButton: NSButton!
+    private var modeSegmentedControl: NSSegmentedControl!
+    private var modeSegmentBg: NSView!
     private var muteButton: NSButton!
-    private var ancIndicator: NSView!
-    private var transparencyIndicator: NSView!
     private var muteIndicator: NSView!
     private var volumeSlider: NSSlider!
     private var volumeValueLabel: NSTextField!
     private var volumeTrack: NSView!
     private var volumeFill: NSView!
     private var statusLabel: NSTextField!
+
+    // Mode enum for clarity
+    private enum AudioMode: Int {
+        case anc = 0
+        case ambient = 1
+        case off = 2
+    }
 
     // Theme state
     private var isGlassTheme = false
@@ -170,33 +175,34 @@ class PopoverViewController: NSViewController, CrusherConnectionDelegate {
 
         yOffset -= 80
 
-        // === TOGGLE BUTTONS ===
-        let buttonWidth: CGFloat = 76
-        let buttonSpacing: CGFloat = 12
-        let buttonStartX: CGFloat = 16
+        // === MODE SELECTOR (3-way: ANC | Ambient | Off) ===
+        let modeLabel = NSTextField(labelWithString: "MODE")
+        modeLabel.frame = NSRect(x: 16, y: yOffset + 50, width: 100, height: 14)
+        modeLabel.font = NSFont.systemFont(ofSize: 11, weight: .semibold)
+        modeLabel.textColor = dimTextColor
+        modeLabel.isBordered = false
+        modeLabel.isEditable = false
+        modeLabel.backgroundColor = .clear
+        view.addSubview(modeLabel)
 
-        // ANC Button
-        ancButton = createToggleButton(frame: NSRect(x: buttonStartX, y: yOffset, width: buttonWidth, height: 64))
-        ancButton.title = "ANC"
-        ancButton.action = #selector(toggleANC)
-        ancButton.target = self
-        view.addSubview(ancButton)
+        // Background for segmented control
+        modeSegmentBg = NSView(frame: NSRect(x: 16, y: yOffset, width: 180, height: 40))
+        modeSegmentBg.wantsLayer = true
+        modeSegmentBg.layer?.backgroundColor = cardColor.cgColor
+        modeSegmentBg.layer?.cornerRadius = 10
+        modeSegmentBg.layer?.borderWidth = 1
+        modeSegmentBg.layer?.borderColor = borderColor.cgColor
+        view.addSubview(modeSegmentBg)
 
-        ancIndicator = createIndicator(for: ancButton)
-        view.addSubview(ancIndicator)
+        // Segmented control
+        modeSegmentedControl = NSSegmentedControl(labels: ["ANC", "Ambient", "Off"], trackingMode: .selectOne, target: self, action: #selector(modeChanged))
+        modeSegmentedControl.frame = NSRect(x: 20, y: yOffset + 5, width: 172, height: 30)
+        modeSegmentedControl.segmentStyle = .capsule
+        modeSegmentedControl.selectedSegment = 2 // Default to Off
+        view.addSubview(modeSegmentedControl)
 
-        // Ambient Button
-        transparencyButton = createToggleButton(frame: NSRect(x: buttonStartX + buttonWidth + buttonSpacing, y: yOffset, width: buttonWidth, height: 64))
-        transparencyButton.title = "Ambient"
-        transparencyButton.action = #selector(toggleTransparency)
-        transparencyButton.target = self
-        view.addSubview(transparencyButton)
-
-        transparencyIndicator = createIndicator(for: transparencyButton)
-        view.addSubview(transparencyIndicator)
-
-        // Mute Button
-        muteButton = createToggleButton(frame: NSRect(x: buttonStartX + (buttonWidth + buttonSpacing) * 2, y: yOffset, width: buttonWidth, height: 64))
+        // Mute Button (standalone)
+        muteButton = createToggleButton(frame: NSRect(x: 208, y: yOffset, width: 56, height: 40))
         muteButton.title = "Mute"
         muteButton.action = #selector(muteTapped)
         muteButton.target = self
@@ -205,7 +211,7 @@ class PopoverViewController: NSViewController, CrusherConnectionDelegate {
         muteIndicator = createIndicator(for: muteButton)
         view.addSubview(muteIndicator)
 
-        yOffset -= 90
+        yOffset -= 70
 
         // === VOLUME SECTION ===
         let volumeHeaderLabel = NSTextField(labelWithString: "VOLUME")
@@ -340,15 +346,19 @@ class PopoverViewController: NSViewController, CrusherConnectionDelegate {
             addGlow(to: connectionStatusDot, color: redColor)
         }
 
-        // Update toggle buttons
-        updateToggleButton(ancButton, indicator: ancIndicator, active: crusher.ancEnabled, color: greenColor)
-        updateToggleButton(transparencyButton, indicator: transparencyIndicator, active: crusher.transparencyEnabled, color: greenColor)
+        // Update mode segmented control
+        if crusher.ancEnabled {
+            modeSegmentedControl.selectedSegment = AudioMode.anc.rawValue
+        } else if crusher.transparencyEnabled {
+            modeSegmentedControl.selectedSegment = AudioMode.ambient.rawValue
+        } else {
+            modeSegmentedControl.selectedSegment = AudioMode.off.rawValue
+        }
+
         updateMuteButton()
 
         // Enable/disable headphone controls based on connection
-        let enabled = crusher.isConnected
-        ancButton.isEnabled = enabled
-        transparencyButton.isEnabled = enabled
+        modeSegmentedControl.isEnabled = crusher.isConnected
     }
 
     private func updateToggleButton(_ button: NSButton, indicator: NSView, active: Bool, color: NSColor) {
@@ -378,38 +388,29 @@ class PopoverViewController: NSViewController, CrusherConnectionDelegate {
 
     // MARK: - Actions
 
-    @objc private func toggleANC() {
-        guard let crusher = crusher else { return }
-        let newState = !crusher.ancEnabled
+    @objc private func modeChanged() {
+        guard let crusher = crusher, let mode = AudioMode(rawValue: modeSegmentedControl.selectedSegment) else { return }
 
-        if newState && crusher.transparencyEnabled {
-            crusher.setTransparency(enabled: false)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-                self?.crusher?.setANC(enabled: newState)
-                self?.statusLabel.stringValue = "ANC enabled"
+        switch mode {
+        case .anc:
+            // Just enable ANC directly - headphones handle the switch
+            crusher.setANC(enabled: true)
+            statusLabel.stringValue = "ANC enabled"
+
+        case .ambient:
+            // Just enable transparency directly - headphones handle the switch
+            crusher.setTransparency(enabled: true)
+            statusLabel.stringValue = "Ambient enabled"
+
+        case .off:
+            // Turn off whichever is currently on
+            if crusher.ancEnabled {
+                crusher.setANC(enabled: false)
+            } else if crusher.transparencyEnabled {
+                crusher.setTransparency(enabled: false)
             }
-            return
+            statusLabel.stringValue = "Audio passthrough"
         }
-
-        crusher.setANC(enabled: newState)
-        statusLabel.stringValue = newState ? "ANC enabled" : "ANC disabled"
-    }
-
-    @objc private func toggleTransparency() {
-        guard let crusher = crusher else { return }
-        let newState = !crusher.transparencyEnabled
-
-        if newState && crusher.ancEnabled {
-            crusher.setANC(enabled: false)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-                self?.crusher?.setTransparency(enabled: newState)
-                self?.statusLabel.stringValue = "Ambient enabled"
-            }
-            return
-        }
-
-        crusher.setTransparency(enabled: newState)
-        statusLabel.stringValue = newState ? "Ambient enabled" : "Ambient disabled"
     }
 
     @objc private func muteTapped() {
@@ -486,11 +487,11 @@ class PopoverViewController: NSViewController, CrusherConnectionDelegate {
             visualEffectView.isHidden = false
             themeToggle.contentTintColor = greenColor
 
-            // Update button colors
-            ancButton.layer?.backgroundColor = glassCardColor.cgColor
-            ancButton.layer?.borderColor = glassBorderColor.cgColor
-            transparencyButton.layer?.backgroundColor = glassCardColor.cgColor
-            transparencyButton.layer?.borderColor = glassBorderColor.cgColor
+            // Update mode segment background
+            modeSegmentBg.layer?.backgroundColor = glassCardColor.cgColor
+            modeSegmentBg.layer?.borderColor = glassBorderColor.cgColor
+
+            // Update mute button
             muteButton.layer?.backgroundColor = glassCardColor.cgColor
             muteButton.layer?.borderColor = glassBorderColor.cgColor
 
@@ -503,11 +504,11 @@ class PopoverViewController: NSViewController, CrusherConnectionDelegate {
             visualEffectView.isHidden = true
             themeToggle.contentTintColor = dimTextColor
 
-            // Update button colors
-            ancButton.layer?.backgroundColor = cardColor.cgColor
-            ancButton.layer?.borderColor = borderColor.cgColor
-            transparencyButton.layer?.backgroundColor = cardColor.cgColor
-            transparencyButton.layer?.borderColor = borderColor.cgColor
+            // Update mode segment background
+            modeSegmentBg.layer?.backgroundColor = cardColor.cgColor
+            modeSegmentBg.layer?.borderColor = borderColor.cgColor
+
+            // Update mute button
             muteButton.layer?.backgroundColor = cardColor.cgColor
             muteButton.layer?.borderColor = borderColor.cgColor
 
@@ -524,20 +525,52 @@ class PopoverViewController: NSViewController, CrusherConnectionDelegate {
 
     func connectionStateChanged(_ connected: Bool) {
         DispatchQueue.main.async { [weak self] in
-            self?.updateUI()
+            self?.updateConnectionStatus()
             self?.statusLabel.stringValue = connected ? "Connected!" : "Disconnected"
+            // Only sync mode on connection, not during user interactions
+            if connected {
+                self?.syncModeFromHeadphones()
+            }
         }
     }
 
     func ancStateChanged(_ enabled: Bool) {
-        DispatchQueue.main.async { [weak self] in
-            self?.updateUI()
-        }
+        // Don't auto-update UI here - let user's selection be the source of truth
+        // This prevents flicker during mode transitions
     }
 
     func transparencyStateChanged(_ enabled: Bool) {
-        DispatchQueue.main.async { [weak self] in
-            self?.updateUI()
+        // Don't auto-update UI here - let user's selection be the source of truth
+        // This prevents flicker during mode transitions
+    }
+
+    private func updateConnectionStatus() {
+        guard let crusher = crusher else { return }
+
+        if crusher.isConnected {
+            connectionStatusLabel.stringValue = "Connected"
+            connectionStatusLabel.textColor = greenColor
+            connectionStatusDot.layer?.backgroundColor = greenColor.cgColor
+            addGlow(to: connectionStatusDot, color: greenColor)
+        } else {
+            connectionStatusLabel.stringValue = "Disconnected"
+            connectionStatusLabel.textColor = redColor
+            connectionStatusDot.layer?.backgroundColor = redColor.cgColor
+            addGlow(to: connectionStatusDot, color: redColor)
+        }
+
+        modeSegmentedControl.isEnabled = crusher.isConnected
+    }
+
+    private func syncModeFromHeadphones() {
+        guard let crusher = crusher else { return }
+
+        if crusher.ancEnabled {
+            modeSegmentedControl.selectedSegment = AudioMode.anc.rawValue
+        } else if crusher.transparencyEnabled {
+            modeSegmentedControl.selectedSegment = AudioMode.ambient.rawValue
+        } else {
+            modeSegmentedControl.selectedSegment = AudioMode.off.rawValue
         }
     }
 
