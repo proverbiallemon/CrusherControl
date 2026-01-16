@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crusher Control — Design Mockup</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, sans-serif;
+            background: #0D0D0F;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+        }
+
+        /* Popover Container */
+        .popover {
+            width: 280px;
+            background: linear-gradient(180deg, #1E1E22 0%, #1A1A1E 100%);
+            border-radius: 14px;
+            border: 1px solid #2A2A2E;
+            box-shadow:
+                0 24px 48px rgba(0, 0, 0, 0.5),
+                0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+            overflow: hidden;
+        }
+
+        /* Header */
+        .header {
+            padding: 16px 16px 12px;
+            border-bottom: 1px solid #2A2A2E;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .device-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, #2A2A2E 0%, #1A1A1E 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #38383D;
+        }
+
+        .device-icon svg {
+            width: 18px;
+            height: 18px;
+            fill: #8E8E93;
+        }
+
+        .device-info h1 {
+            font-size: 13px;
+            font-weight: 600;
+            color: #FFFFFF;
+            letter-spacing: -0.2px;
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 11px;
+            color: #30D158;
+            font-weight: 500;
+        }
+
+        .connection-status::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            background: #30D158;
+            border-radius: 50%;
+            box-shadow: 0 0 8px #30D158;
+        }
+
+        .connection-status.disconnected {
+            color: #FF453A;
+        }
+
+        .connection-status.disconnected::before {
+            background: #FF453A;
+            box-shadow: 0 0 8px #FF453A;
+        }
+
+        /* Toggle Buttons Row */
+        .toggles {
+            padding: 16px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .toggle-btn {
+            flex: 1;
+            height: 64px;
+            background: #242428;
+            border: 1px solid #38383D;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .toggle-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: transparent;
+            transition: all 0.3s ease;
+        }
+
+        .toggle-btn:hover {
+            background: #2A2A2E;
+            border-color: #48484A;
+        }
+
+        .toggle-btn.active {
+            background: linear-gradient(180deg, #1A2A1E 0%, #1A241A 100%);
+            border-color: #30D158;
+        }
+
+        .toggle-btn.active::before {
+            background: #30D158;
+            box-shadow: 0 0 20px #30D158;
+        }
+
+        .toggle-btn svg {
+            width: 22px;
+            height: 22px;
+            fill: #6E6E73;
+            transition: all 0.2s ease;
+        }
+
+        .toggle-btn.active svg {
+            fill: #30D158;
+            filter: drop-shadow(0 0 8px rgba(48, 209, 88, 0.5));
+        }
+
+        .toggle-btn span {
+            font-size: 10px;
+            font-weight: 600;
+            color: #6E6E73;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.2s ease;
+        }
+
+        .toggle-btn.active span {
+            color: #30D158;
+        }
+
+        /* Volume Section */
+        .volume-section {
+            padding: 0 16px 16px;
+        }
+
+        .volume-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .volume-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: #6E6E73;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .volume-value {
+            font-family: "SF Mono", Monaco, monospace;
+            font-size: 13px;
+            font-weight: 600;
+            color: #FFFFFF;
+        }
+
+        .volume-slider-container {
+            height: 8px;
+            background: #1A1A1E;
+            border-radius: 4px;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid #2A2A2E;
+        }
+
+        .volume-slider-fill {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 65%;
+            background: linear-gradient(90deg, #30D158 0%, #5DE67E 100%);
+            border-radius: 4px;
+            transition: width 0.1s ease;
+        }
+
+        .volume-slider-knob {
+            position: absolute;
+            left: calc(65% - 7px);
+            top: 50%;
+            transform: translateY(-50%);
+            width: 14px;
+            height: 14px;
+            background: #FFFFFF;
+            border-radius: 50%;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+            cursor: grab;
+        }
+
+        /* Divider */
+        .divider {
+            height: 1px;
+            background: #2A2A2E;
+            margin: 0 16px;
+        }
+
+        /* Footer Actions */
+        .footer {
+            padding: 12px 16px 16px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .footer-btn {
+            flex: 1;
+            height: 32px;
+            background: transparent;
+            border: 1px solid #38383D;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 500;
+            color: #8E8E93;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .footer-btn:hover {
+            background: #242428;
+            border-color: #48484A;
+            color: #FFFFFF;
+        }
+
+        .footer-btn svg {
+            width: 12px;
+            height: 12px;
+            fill: currentColor;
+        }
+
+        .footer-btn.quit {
+            flex: 0.6;
+        }
+
+        /* Mute button stays red when active */
+        .toggle-btn.mute.active {
+            background: linear-gradient(180deg, #2A1A1A 0%, #241A1A 100%);
+            border-color: #FF453A;
+        }
+
+        .toggle-btn.mute.active::before {
+            background: #FF453A;
+            box-shadow: 0 0 20px #FF453A;
+        }
+
+        .toggle-btn.mute.active svg {
+            fill: #FF453A;
+            filter: drop-shadow(0 0 8px rgba(255, 69, 58, 0.5));
+        }
+
+        .toggle-btn.mute.active span {
+            color: #FF453A;
+        }
+
+        /* Description text below mockup */
+        .description {
+            margin-top: 40px;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        .description h2 {
+            color: #FFFFFF;
+            font-size: 18px;
+            margin-bottom: 12px;
+        }
+
+        .description p {
+            color: #6E6E73;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <div class="popover">
+            <!-- Header -->
+            <div class="header">
+                <div class="header-left">
+                    <div class="device-icon">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M12 1C7.03 1 3 5.03 3 10v8c0 1.1.9 2 2 2h2v-8H5v-2c0-3.87 3.13-7 7-7s7 3.13 7 7v2h-2v8h2c1.1 0 2-.9 2-2v-8c0-4.97-4.03-9-9-9zM7 18v-4h1v4H7zm10-4h1v4h-1v-4z"/>
+                        </svg>
+                    </div>
+                    <div class="device-info">
+                        <h1>Crusher ANC 2</h1>
+                        <div class="connection-status">Connected</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Toggle Buttons -->
+            <div class="toggles">
+                <div class="toggle-btn active">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+                    </svg>
+                    <span>ANC</span>
+                </div>
+                <div class="toggle-btn ambient">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M12 3v2c3.86 0 7 3.14 7 7s-3.14 7-7 7-7-3.14-7-7h-2c0 4.97 4.03 9 9 9s9-4.03 9-9-4.03-9-9-9zm0 4v2c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3H7c0 2.76 2.24 5 5 5s5-2.24 5-5-2.24-5-5-5z"/>
+                    </svg>
+                    <span>Ambient</span>
+                </div>
+                <div class="toggle-btn mute">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M7 9v6h4l5 5V4l-5 5H7z"/>
+                    </svg>
+                    <span>Mute</span>
+                </div>
+            </div>
+
+            <!-- Volume Slider -->
+            <div class="volume-section">
+                <div class="volume-header">
+                    <span class="volume-label">Volume</span>
+                    <span class="volume-value">65%</span>
+                </div>
+                <div class="volume-slider-container">
+                    <div class="volume-slider-fill"></div>
+                    <div class="volume-slider-knob"></div>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <!-- Footer -->
+            <div class="footer">
+                <button class="footer-btn">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                    </svg>
+                    Reconnect
+                </button>
+                <button class="footer-btn quit">Quit</button>
+            </div>
+        </div>
+
+        <div class="description">
+            <h2>Dark Audio Console</h2>
+            <p>Premium audio equipment meets macOS design. The glowing top accent on active buttons creates a subtle but memorable visual signature.</p>
+        </div>
+    </div>
+
+    <script>
+        // Interactive demo
+        document.querySelectorAll('.toggle-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                // For ANC and Ambient, they're mutually exclusive
+                if (btn.classList.contains('ambient') || btn.querySelector('span').textContent === 'ANC') {
+                    const ancBtn = document.querySelector('.toggle-btn:not(.ambient):not(.mute)');
+                    const ambientBtn = document.querySelector('.toggle-btn.ambient');
+
+                    if (btn.classList.contains('ambient')) {
+                        ambientBtn.classList.toggle('active');
+                        if (ambientBtn.classList.contains('active')) {
+                            ancBtn.classList.remove('active');
+                        }
+                    } else {
+                        ancBtn.classList.toggle('active');
+                        if (ancBtn.classList.contains('active')) {
+                            ambientBtn.classList.remove('active');
+                        }
+                    }
+                } else {
+                    btn.classList.toggle('active');
+                }
+            });
+        });
+
+        // Volume slider interaction
+        const slider = document.querySelector('.volume-slider-container');
+        const fill = document.querySelector('.volume-slider-fill');
+        const knob = document.querySelector('.volume-slider-knob');
+        const valueDisplay = document.querySelector('.volume-value');
+
+        let isDragging = false;
+
+        const updateVolume = (e) => {
+            const rect = slider.getBoundingClientRect();
+            let x = e.clientX - rect.left;
+            let percent = Math.max(0, Math.min(100, (x / rect.width) * 100));
+
+            fill.style.width = percent + '%';
+            knob.style.left = `calc(${percent}% - 7px)`;
+            valueDisplay.textContent = Math.round(percent) + '%';
+        };
+
+        slider.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            updateVolume(e);
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (isDragging) updateVolume(e);
+        });
+
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+    </script>
+</body>
+</html>

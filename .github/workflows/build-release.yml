@@ -1,0 +1,32 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # Triggers on version tags like v1.0, v1.1, etc.
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Build app
+      run: |
+        chmod +x build.sh
+        ./build.sh
+
+    - name: Create ZIP archive
+      run: |
+        cd build
+        zip -r CrusherControl.zip CrusherControl.app
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: build/CrusherControl.zip
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

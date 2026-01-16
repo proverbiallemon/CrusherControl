@@ -1,0 +1,23 @@
+# Build artifacts
+build/
+*.app
+
+# Xcode
+*.xcodeproj
+*.xcworkspace
+xcuserdata/
+*.xcuserstate
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Backup files
+.bass-work-backup/
+
+# Debug logs
+*.log
+
+# Temporary files
+/tmp/
